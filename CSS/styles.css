@@ -1,0 +1,393 @@
+/* =========================================================
+   FITTRACK - FINAL STYLESHEET
+   Unified Styling for Dashboard, Workouts, Meals, Progress, and Goals
+   ========================================================= */
+
+/* ---------- GLOBAL RESET ---------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+:root {
+  --bg: #f9fafb;
+  --text: #111827;
+  --card-bg: #ffffff;
+  --accent: #3b82f6;
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+body.dark {
+  --bg: #111827;
+  --text: #f3f4f6;
+  --card-bg: #1f2937;
+  --accent: #60a5fa;
+  --shadow: 0 2px 8px rgba(255, 255, 255, 0.06);
+}
+
+/* ---------- GLOBAL LAYOUT ---------- */
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.container {
+  flex: 1;
+  max-width: 1200px;
+  width: 90%;
+  margin: 20px auto;
+}
+
+/* ---------- TOP NAV ---------- */
+.topnav {
+  background-color: var(--card-bg);
+  box-shadow: var(--shadow);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 30px;
+}
+
+.logo {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.topnav nav a {
+  text-decoration: none;
+  color: var(--text);
+  margin: 0 12px;
+  font-weight: 500;
+  transition: color 0.3s;
+}
+
+.topnav nav a:hover,
+.topnav nav a.active {
+  color: var(--accent);
+}
+
+#themeToggle {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  cursor: pointer;
+  color: var(--text);
+}
+
+/* ---------- FOOTER ---------- */
+.footer {
+  text-align: center;
+  padding: 10px;
+  background-color: var(--card-bg);
+  box-shadow: var(--shadow);
+  font-size: 0.9rem;
+}
+
+/* ---------- BUTTONS & INPUTS ---------- */
+button {
+  background-color: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 8px 12px;
+  font-weight: 500;
+  transition: background 0.3s ease;
+}
+button:hover {
+  background-color: #2563eb;
+}
+
+input, select, textarea {
+  padding: 8px 10px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  outline: none;
+  font-size: 0.95rem;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent);
+}
+
+/* ---------- GRID & CARDS ---------- */
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin: 20px 0;
+}
+
+.card {
+  background-color: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  padding: 18px;
+  text-align: center;
+  transition: transform 0.2s ease;
+}
+.card:hover {
+  transform: scale(1.02);
+}
+.card .icon {
+  width: 50px;
+  height: 50px;
+  margin-bottom: 8px;
+}
+
+/* ---------- PROGRESS BARS ---------- */
+.progressbar {
+  width: 100%;
+  height: 10px;
+  background-color: #e5e7eb;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 6px;
+}
+.progressbar div {
+  height: 100%;
+  background-color: var(--accent);
+  width: 0%;
+  transition: width 0.4s ease;
+}
+
+/* ---------- TWO COLUMN LAYOUT ---------- */
+.two-column {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.panel {
+  background-color: var(--card-bg);
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  flex: 1;
+  min-width: 340px;
+}
+
+/* ---------- DASHBOARD SPECIFIC ---------- */
+.goal-card {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 18px;
+  align-items: center;
+  margin-top: 18px;
+}
+.goal-left .goal-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.goal-progress {
+  height: 10px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+#goalBarFill {
+  background-color: #22c55e;
+  height: 100%;
+  width: 0%;
+  transition: width 0.4s ease;
+}
+.goal-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.metric-label {
+  font-size: .85rem;
+  color: #6b7280;
+}
+.metric-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.big-chart {
+  margin-top: 20px;
+  padding: 24px;
+  max-width: 1100px;
+  width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+.big-chart canvas {
+  width: 100% !important;
+  height: 420px !important;
+}
+
+/* ---------- WORKOUTS PAGE ---------- */
+.left-panel form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.left-panel .flex {
+  display: flex;
+  gap: 10px;
+}
+.daily-summary {
+  margin-top: 20px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 10px;
+}
+#burnProgress {
+  width: 0%;
+  height: 100%;
+  background-color: #3b82f6;
+  transition: width 0.4s ease;
+}
+#workoutTable {
+  width: 100%;
+  border-collapse: collapse;
+}
+#workoutTable th, #workoutTable td {
+  padding: 8px 10px;
+  text-align: center;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+/* ---------- MEALS PAGE ---------- */
+.daily-goal {
+  margin-top: 20px;
+  border-top: 1px solid #e5e7eb;
+  padding-top: 10px;
+}
+#goalProgress {
+  width: 0%;
+  height: 10px;
+  background-color: #22c55e;
+  border-radius: 8px;
+  transition: width 0.4s ease;
+  margin-top: 5px;
+}
+#mealTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+#mealTable th, #mealTable td {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid #e5e7eb;
+}
+#macroChart {
+  max-width: 300px;
+  margin: 0 auto;
+}
+
+/* ---------- PROGRESS PAGE ---------- */
+#weightTable {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 15px;
+}
+#weightTable th, #weightTable td {
+  padding: 8px;
+  text-align: center;
+  border-bottom: 1px solid #e5e7eb;
+}
+#weightChart, #calorieChart {
+  width: 100%;
+  max-height: 340px;
+  margin-top: 10px;
+}
+
+/* ---------- GOALS PAGE ---------- */
+.goal-card {
+  background-color: var(--card-bg);
+  padding: 15px;
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+  margin-bottom: 15px;
+}
+.goal-info h4 {
+  margin: 0;
+}
+.goal-info p {
+  margin: 5px 0;
+}
+.small-bar {
+  height: 8px;
+  margin: 8px 0;
+}
+.goal-fill {
+  height: 100%;
+  background-color: var(--accent);
+  border-radius: 8px;
+  transition: width 0.3s ease;
+}
+.goal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+.goal-actions button {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  color: white;
+}
+.inc-btn { background-color: #22c55e; }
+.done-btn { background-color: #2563eb; }
+.delete-btn { background-color: #ef4444; }
+.goal-actions button:hover { opacity: 0.85; }
+
+#overallProgress {
+  height: 10px;
+  background-color: var(--accent);
+  border-radius: 8px;
+  width: 0%;
+  transition: width 0.4s ease;
+}
+#progressPercent {
+  text-align: center;
+  margin-top: 6px;
+}
+
+/* ---------- TABLE DELETE BUTTON ---------- */
+.delete-btn {
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: background 0.2s;
+}
+.delete-btn:hover {
+  background-color: #dc2626;
+}
+
+/* ---------- RESPONSIVE DESIGN ---------- */
+@media (max-width: 768px) {
+  .two-column { flex-direction: column; }
+  .goal-card { grid-template-columns: 1fr; }
+  .big-chart canvas { height: 280px !important; }
+  .goal-metrics { grid-template-columns: 1fr; }
+  .grid-4 { grid-template-columns: 1fr 1fr; }
+}
+
+/* ---------- DARK MODE ELEMENT FIXES ---------- */
+body.dark .metric-label { color: #9ca3af; }
+body.dark #goalBarFill { background-color: #16a34a; }
+body.dark #goalProgress { background-color: #16a34a; }
+body.dark #burnProgress { background-color: #60a5fa; }
+body.dark #mealTable th,
+body.dark #mealTable td,
+body.dark #workoutTable th,
+body.dark #workoutTable td,
+body.dark #weightTable th,
+body.dark #weightTable td {
+  border-color: #374151;
+}
+body.dark .card, body.dark .panel, body.dark .goal-card {
+  background-color: var(--card-bg);
+}
