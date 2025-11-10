@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Meals - FitTrack</title>
+  <link rel="stylesheet" href="CSS/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <header class="topnav">
+    <div class="logo">FitTrack</div>
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="workouts.html">Workouts</a>
+      <a class="active" href="meals.html">Meals</a>
+      <a href="progress.html">Progress</a>
+      <a href="goals.html">Goals</a>
+    </nav>
+    <button id="themeToggle">🌙</button>
+  </header>
+
+  <main class="container">
+    <h2>Meals & Nutrition</h2>
+
+    <label for="mealDate">Select a date:</label>
+    <input type="date" id="mealDate" />
+
+    <div class="two-column">
+      <!-- LEFT SIDE: Add meal + totals -->
+      <div class="panel left-panel">
+        <h3>Add Meal</h3>
+        <form id="mealForm">
+          <input type="text" id="mealName" placeholder="Meal name (e.g., Chicken Salad)" required />
+          <input type="number" id="mealCalories" placeholder="Calories" required />
+
+          <div class="flex">
+            <input type="number" id="mealProtein" placeholder="Protein (g)" required />
+            <input type="number" id="mealCarbs" placeholder="Carbs (g)" required />
+            <input type="number" id="mealFat" placeholder="Fat (g)" required />
+          </div>
+
+          <button type="submit">+ Add Meal</button>
+        </form>
+
+        <div class="daily-summary">
+          <h4>Selected Day Nutrition</h4>
+          <p id="mealTotalCalories">Total Calories: 0 kcal</p>
+          <p id="mealTotalMacros">Protein: 0g • Carbs: 0g • Fat: 0g</p>
+          <div class="progressbar">
+            <div id="mealProgressBar"></div>
+          </div>
+          <p id="mealGoalText" class="small">0 / 2000 kcal goal</p>
+        </div>
+      </div>
+
+      <!-- RIGHT SIDE: list + macro chart -->
+      <div class="panel right-panel">
+        <h3>Meals for Selected Day</h3>
+        <table id="mealTable">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Meal</th>
+              <th>kcal</th>
+              <th>P</th>
+              <th>C</th>
+              <th>F</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="mealList"></tbody>
+        </table>
+
+        <h4 style="margin-top:18px;">Macro Breakdown</h4>
+        <canvas id="macroChart"></canvas>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">© 2025 FitTrack Dashboard</footer>
+
+  <script>
+    // ---------- DARK MODE ----------
+    const themeToggle = document.getElementById("themeToggle");
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark");
+    }
+    themeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      localStorage.setItem(
+        "theme",
+        document.body.classList.contains("dark") ? "dark" : "light"
+      );
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      let state = JSON.parse(localStorage.getItem("fittrack")) || {
+        workouts: [],
+        meals: [],
+        weights: [],
+        goals: [],
+        calGoal: 2000,
+        lastMessage: "",
+        sampleInitialized: false,
+        selectedDate: null
+      };
+
+      if (!Array.isArray(state.workouts)) state.workouts = [];
+      if (!Array.isArray(state.meals)) state.meals = [];
+      if (!Array.isArray(state.weights)) state.weights = [];
+      if (!Array.isArray(state.goals)) state.goals = [];
+      if (state.calGoal == null) state.calGoal = 2000;
+      if (state.lastMessage === undefined) state.lastMessage = "";
+      if (state.sampleInitialized === undefined) state.sampleInitialized = false;
+      if (!state.selectedDate) {
+        state.selectedDate = new Date().toISOString().split("T")[0];
+      }
+
+      const mealForm         = document.getElementById("mealForm");
+      const mealList         = document.getElementById("mealList");
+      const mealTotalCalories= document.getElementById("mealTotalCalories");
+      const mealTotalMacros  = document.getElementById("mealTotalMacros");
+      const mealProgressBar  = document.getElementById("mealProgressBar");
+      const mealGoalText     = document.getElementById("mealGoalText");
+      const macroCanvas      = document.getElementById("macroChart");
+      const dateInput        = document.getElementById("mealDate");
+      let macroChart;
+
+      let currentDate = new Date(state.selectedDate);
+      dateInput.value = state.selectedDate;
+
+      function saveState() {
+        localStorage.setItem("fittrack", JSON.stringify(state));
+      }
+
+      function sameDay(a, b) {
+        const da = new Date(a), db = new Date(b);
+        return (
+          da.getFullYear() === db.getFullYear() &&
+          da.getMonth() === db.getMonth() &&
+          da.getDate() === db.getDate()
+        );
+      }
+
+      function getSelectedTimestamp() {
+        const d = new Date(state.selectedDate || new Date().toISOString().split("T")[0]);
+        const now = new Date();
+        d.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
+        return d.getTime();
+      }
+
+      function drawMacroChart(protein, carbs, fat) {
+        const data   = [protein, carbs, fat];
+        const labels = ["Protein", "Carbs", "Fat"];
+        const colors = ["#3b82f6", "#22c55e", "#f97316"];
+
+        if (macroChart) macroChart.destroy();
+        macroChart = new Chart(macroCanvas, {
+          type: "doughnut",
+          data: {
+            labels,
+            datasets: [
+              { data, backgroundColor: colors, borderWidth: 2 }
+            ]
+          },
+          options: {
+            plugins: {
+              legend: {
+                labels: {
+                  color: document.body.classList.contains("dark") ? "#f3f4f6" : "#111827"
+                }
+              }
+            }
+          }
+        });
+      }
+
+      function renderMeals() {
+        const todays = state.meals.filter(m => sameDay(m.ts, currentDate));
+        mealList.innerHTML = "";
+
+        let totalCal = 0;
+        let totalP = 0;
+        let totalC = 0;
+        let totalF = 0;
+
+        todays.forEach(m => {
+          totalCal += m.calories || 0;
+          totalP   += m.protein  || 0;
+          totalC   += m.carbs    || 0;
+          totalF   += m.fat      || 0;
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${new Date(m.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+            <td>${m.name}</td>
+            <td>${m.calories}</td>
+            <td>${m.protein}</td>
+            <td>${m.carbs}</td>
+            <td>${m.fat}</td>
+            <td><button class="delete-btn">X</button></td>
+          `;
+
+          tr.querySelector(".delete-btn").addEventListener("click", () => {
+            state.meals = state.meals.filter(x => x.ts !== m.ts);
+            saveState();
+            renderMeals();
+          });
+
+          mealList.appendChild(tr);
+        });
+
+        mealTotalCalories.textContent = `Total Calories: ${totalCal} kcal`;
+        mealTotalMacros.textContent   = `Protein: ${totalP}g • Carbs: ${totalC}g • Fat: ${totalF}g`;
+
+        const goal = state.calGoal || 2000;
+        const pct  = Math.min(100, (totalCal / goal) * 100);
+        mealProgressBar.style.width = pct + "%";
+        mealGoalText.textContent = `${totalCal} / ${goal} kcal goal`;
+
+        if (todays.length === 0 && totalCal === 0) {
+          // no message change
+        } else if (pct >= 100) {
+          state.lastMessage = `You reached your calorie goal on ${state.selectedDate} 🥗🔥`;
+          saveState();
+        } else if (pct >= 70) {
+          state.lastMessage = `You're close to your calorie goal on ${state.selectedDate} — keep it up 💪`;
+          saveState();
+        } else if (todays.length > 0) {
+          state.lastMessage = `Nice! You logged meals for ${state.selectedDate} 🍽️`;
+          saveState();
+        }
+
+        drawMacroChart(totalP, totalC, totalF);
+      }
+
+      mealForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+
+        const name     = document.getElementById("mealName").value.trim();
+        const calories = parseInt(document.getElementById("mealCalories").value.trim());
+        const protein  = parseInt(document.getElementById("mealProtein").value.trim());
+        const carbs    = parseInt(document.getElementById("mealCarbs").value.trim());
+        const fat      = parseInt(document.getElementById("mealFat").value.trim());
+
+        if (!name || isNaN(calories) || isNaN(protein) || isNaN(carbs) || isNaN(fat)) return;
+
+        state.meals.push({
+          name,
+          calories,
+          protein,
+          carbs,
+          fat,
+          ts: getSelectedTimestamp()
+        });
+
+        state.lastMessage = `Nice choice! You logged "${name}" on ${state.selectedDate} 🥗`;
+        saveState();
+
+        mealForm.reset();
+        renderMeals();
+      });
+
+      dateInput.addEventListener("change", (e) => {
+        const value = e.target.value || new Date().toISOString().split("T")[0];
+        state.selectedDate = value;
+        currentDate = new Date(state.selectedDate);
+        saveState();
+        renderMeals();
+      });
+
+      renderMeals();
+    });
+  </script>
+</body>
+</html>

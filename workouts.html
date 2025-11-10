@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workouts - FitTrack</title>
+  <link rel="stylesheet" href="CSS/styles.css" />
+</head>
+
+<body>
+  <header class="topnav">
+    <div class="logo">FitTrack</div>
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a class="active" href="workouts.html">Workouts</a>
+      <a href="meals.html">Meals</a>
+      <a href="progress.html">Progress</a>
+      <a href="goals.html">Goals</a>
+    </nav>
+    <button id="themeToggle">🌙</button>
+  </header>
+
+  <main class="container">
+    <h2>Workout Logger</h2>
+
+    <label for="workoutDate">Select a date:</label>
+    <input type="date" id="workoutDate" />
+
+    <div class="two-column">
+      <!-- LEFT SIDE -->
+      <div class="panel left-panel">
+        <h3>Add Workout</h3>
+        <form id="workoutForm">
+          <input
+            type="text"
+            id="workoutName"
+            placeholder="Exercise (e.g., Bench Press)"
+            required
+          />
+          <div class="flex">
+            <input type="number" id="workoutSets" placeholder="Sets" required />
+            <input type="number" id="workoutReps" placeholder="Reps" required />
+          </div>
+          <input
+            type="number"
+            id="workoutDuration"
+            placeholder="Duration (min)"
+            required
+          />
+          <input
+            type="number"
+            id="workoutCalories"
+            placeholder="Calories burned"
+            required
+          />
+          <button type="submit">+ Add Workout</button>
+        </form>
+
+        <div class="daily-summary">
+          <h4>Daily Totals</h4>
+          <p id="totalCalories">Calories Burned: 0 kcal</p>
+          <p id="totalSets">Total Sets: 0</p>
+          <p id="totalReps">Total Reps: 0</p>
+          <div class="progressbar">
+            <div id="burnProgress"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RIGHT SIDE -->
+      <div class="panel right-panel">
+        <h3>Workouts for Selected Day</h3>
+        <table id="workoutTable">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Exercise</th>
+              <th>Sets</th>
+              <th>Reps</th>
+              <th>kcal</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="workoutList"></tbody>
+        </table>
+        <p id="workoutTotalText">Total: 0 kcal burned</p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">© 2025 FitTrack Dashboard</footer>
+
+  <script>
+    // ---------- DARK MODE ----------
+    const themeToggle = document.getElementById("themeToggle");
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark");
+    }
+    themeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      localStorage.setItem(
+        "theme",
+        document.body.classList.contains("dark") ? "dark" : "light"
+      );
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      let state = JSON.parse(localStorage.getItem("fittrack")) || {
+        workouts: [],
+        meals: [],
+        weights: [],
+        goals: [],
+        calGoal: 2000,
+        lastMessage: "",
+        sampleInitialized: false,
+        selectedDate: null
+      };
+
+      if (!Array.isArray(state.workouts)) state.workouts = [];
+      if (!Array.isArray(state.meals)) state.meals = [];
+      if (!Array.isArray(state.weights)) state.weights = [];
+      if (!Array.isArray(state.goals)) state.goals = [];
+      if (state.calGoal == null) state.calGoal = 2000;
+      if (state.lastMessage === undefined) state.lastMessage = "";
+      if (state.sampleInitialized === undefined) state.sampleInitialized = false;
+      if (!state.selectedDate) {
+        state.selectedDate = new Date().toISOString().split("T")[0];
+      }
+
+      const form            = document.getElementById("workoutForm");
+      const list            = document.getElementById("workoutList");
+      const totalCalories   = document.getElementById("totalCalories");
+      const totalSets       = document.getElementById("totalSets");
+      const totalReps       = document.getElementById("totalReps");
+      const burnProgress    = document.getElementById("burnProgress");
+      const workoutTotalText= document.getElementById("workoutTotalText");
+      const dateInput       = document.getElementById("workoutDate");
+
+      let currentDate = new Date(state.selectedDate);
+      dateInput.value = state.selectedDate;
+
+      function saveState() {
+        localStorage.setItem("fittrack", JSON.stringify(state));
+      }
+
+      function sameDay(a, b) {
+        const da = new Date(a), db = new Date(b);
+        return da.toDateString() === db.toDateString();
+      }
+
+      function getSelectedTimestamp() {
+        const d = new Date(state.selectedDate || new Date().toISOString().split("T")[0]);
+        const now = new Date();
+        d.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
+        return d.getTime();
+      }
+
+      function renderWorkouts() {
+        const todays = state.workouts.filter(w => sameDay(w.ts, currentDate));
+        list.innerHTML = "";
+
+        let totalKcal = 0;
+        let totalSet  = 0;
+        let totalRep  = 0;
+
+        todays.forEach(w => {
+          totalKcal += w.calories || 0;
+          totalSet  += w.sets || 0;
+          totalRep  += w.reps || 0;
+
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${new Date(w.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</td>
+            <td>${w.name}</td>
+            <td>${w.sets}</td>
+            <td>${w.reps}</td>
+            <td>${w.calories}</td>
+            <td><button class="delete-btn">X</button></td>
+          `;
+
+          tr.querySelector(".delete-btn").addEventListener("click", () => {
+            state.workouts = state.workouts.filter(x => x.ts !== w.ts);
+            saveState();
+            renderWorkouts();
+          });
+
+          list.appendChild(tr);
+        });
+
+        totalCalories.textContent = `Calories Burned: ${totalKcal} kcal`;
+        totalSets.textContent     = `Total Sets: ${totalSet}`;
+        totalReps.textContent     = `Total Reps: ${totalRep}`;
+        workoutTotalText.textContent = `Total: ${totalKcal} kcal burned`;
+
+        const pct = Math.min(100, (totalKcal / 500) * 100);
+        burnProgress.style.width = pct + "%";
+
+        if (todays.length > 0 && totalKcal < 300) {
+          state.lastMessage = "Nice session! You logged a workout today 🙌";
+          saveState();
+        } else if (totalKcal >= 300) {
+          state.lastMessage = `Great work! You burned ${totalKcal} kcal on ${state.selectedDate} 💪`;
+          saveState();
+        }
+      }
+
+      form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const name     = document.getElementById("workoutName").value.trim();
+        const sets     = parseInt(document.getElementById("workoutSets").value.trim());
+        const reps     = parseInt(document.getElementById("workoutReps").value.trim());
+        const duration = parseInt(document.getElementById("workoutDuration").value.trim());
+        const calories = parseInt(document.getElementById("workoutCalories").value.trim());
+
+        if (name && !isNaN(sets) && !isNaN(reps) && !isNaN(duration) && !isNaN(calories)) {
+          state.workouts.push({
+            name,
+            sets,
+            reps,
+            duration,
+            calories,
+            ts: getSelectedTimestamp()
+          });
+
+          state.lastMessage = `Awesome! You finished ${name} on ${state.selectedDate} 💥`;
+          saveState();
+
+          form.reset();
+          renderWorkouts();
+        }
+      });
+
+      dateInput.addEventListener("change", (e) => {
+        const value = e.target.value || new Date().toISOString().split("T")[0];
+        state.selectedDate = value;
+        currentDate = new Date(state.selectedDate);
+        saveState();
+        renderWorkouts();
+      });
+
+      // Initial render
+      renderWorkouts();
+    });
+  </script>
+</body>
+</html>

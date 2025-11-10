@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitTrack Dashboard</title>
+  <link rel="stylesheet" href="CSS/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    .big-chart {
+      margin-top: 25px;
+      padding: 24px;
+      width: 100%;
+      max-width: 1100px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .big-chart canvas { width: 100% !important; height: 420px !important; }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 18px;
+      margin-top: 18px;
+    }
+    @media (max-width: 1024px) { .two-col { grid-template-columns: 1fr; } }
+
+    .goal-card .row { display: flex; gap: 8px; align-items: center; }
+    .goal-card .small { color: #6b7280; margin-top: 6px; }
+    .goal-card .progressbar { margin-top: 8px; }
+    .goal-card input { max-width: 180px; }
+    .meal-progress { margin-top: 4px; width: 90%; margin-left: auto; margin-right: auto; }
+
+    /* CLOCK WITH NUMBERS */
+    .clock-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+
+    .clock-container {
+      position: relative;
+      width: 240px;
+      height: 240px;
+      border-radius: 50%;
+      border: 10px solid #1f2937;
+      background: #ffffff;
+      box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    }
+    body.dark .clock-container {
+      background: #111827;
+      border-color: #e5e7eb;
+    }
+
+    .hand {
+      position: absolute;
+      background: #111827;
+      transform-origin: bottom center;
+      border-radius: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+    }
+    body.dark .hand { background: #f9fafb; }
+
+    .hour {
+      width: 6px;
+      height: 60px;
+      top: 60px;
+    }
+    .minute {
+      width: 4px;
+      height: 85px;
+      top: 35px;
+    }
+    .second {
+      width: 2px;
+      height: 95px;
+      top: 25px;
+      background: #ef4444;
+    }
+
+    .clock-center-dot {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: #ef4444;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .clock-number {
+      position: absolute;
+      font-weight: 600;
+      font-size: 1rem;
+      color: #111827;
+    }
+    body.dark .clock-number { color: #e5e7eb; }
+
+    .n12 { top: 8px; left: 50%; transform: translateX(-50%); }
+    .n3  { top: 50%; right: 10px; transform: translateY(-50%); }
+    .n6  { bottom: 8px; left: 50%; transform: translateX(-50%); }
+    .n9  { top: 50%; left: 10px; transform: translateY(-50%); }
+
+    .n1  { top: 25px; right: 55px; }
+    .n2  { top: 60px; right: 22px; }
+    .n4  { top: 145px; right: 22px; }
+    .n5  { top: 180px; right: 55px; }
+    .n7  { top: 180px; left: 55px; }
+    .n8  { top: 145px; left: 22px; }
+    .n10 { top: 60px; left: 22px; }
+    .n11 { top: 25px; left: 55px; }
+
+    .digital-time {
+      margin-top: 10px;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #1f2937;
+      text-align: center;
+    }
+    body.dark .digital-time { color: #e5e7eb; }
+
+    /* Motivation bar */
+    .motivation {
+      margin-top: 12px;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #22c55e, #16a34a);
+      color: #ecfdf5;
+      font-weight: 500;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+      display: none;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+  <header class="topnav">
+    <div class="logo">FitTrack</div>
+    <nav>
+      <a class="active" href="index.html">Dashboard</a>
+      <a href="workouts.html">Workouts</a>
+      <a href="meals.html">Meals</a>
+      <a href="progress.html">Progress</a>
+      <a href="goals.html">Goals</a>
+    </nav>
+    <button id="themeToggle">🌙</button>
+  </header>
+
+  <main class="container">
+    <h2 style="text-align:center;">Today's Overview</h2>
+
+    <!-- CLOCK -->
+    <div class="clock-wrapper">
+      <div class="clock-container">
+        <div class="clock-number n12">12</div>
+        <div class="clock-number n1">1</div>
+        <div class="clock-number n2">2</div>
+        <div class="clock-number n3">3</div>
+        <div class="clock-number n4">4</div>
+        <div class="clock-number n5">5</div>
+        <div class="clock-number n6">6</div>
+        <div class="clock-number n7">7</div>
+        <div class="clock-number n8">8</div>
+        <div class="clock-number n9">9</div>
+        <div class="clock-number n10">10</div>
+        <div class="clock-number n11">11</div>
+
+        <div class="hand hour" id="hourHand"></div>
+        <div class="hand minute" id="minuteHand"></div>
+        <div class="hand second" id="secondHand"></div>
+        <div class="clock-center-dot"></div>
+      </div>
+      <div id="digitalTime" class="digital-time">00:00:00</div>
+    </div>
+
+    <!-- MOTIVATION -->
+    <div id="motivationMessage" class="motivation"></div>
+
+    <label for="historyDate">Select a date:</label>
+    <input type="date" id="historyDate" />
+
+    <!-- Overview cards -->
+    <div class="grid-4" style="margin-top:10px;">
+      <a href="workouts.html" class="card">
+        <img src="https://cdn-icons-png.flaticon.com/128/1040/1040230.png" class="icon" alt="">
+        <h3>Workouts</h3>
+        <p id="outKcal">0 kcal</p>
+      </a>
+
+      <a href="meals.html" class="card">
+        <img src="https://cdn-icons-png.flaticon.com/128/3480/3480629.png" class="icon" alt="">
+        <h3>Meals</h3>
+        <p id="inKcal">0 kcal</p>
+        <div class="progressbar meal-progress">
+          <div id="calGoalBar"></div>
+        </div>
+      </a>
+
+      <a href="progress.html" class="card">
+        <img src="https://cdn-icons-png.flaticon.com/128/828/828509.png" class="icon" alt="">
+        <h3>Weight</h3>
+        <p id="weightText">No weigh-ins yet</p>
+      </a>
+
+      <a href="goals.html" class="card">
+        <img src="https://cdn-icons-png.flaticon.com/128/992/992700.png" class="icon" alt="">
+        <h3>Goals</h3>
+        <p id="goalText">0 goals</p>
+      </a>
+    </div>
+
+    <!-- Weekly chart + goal panel -->
+    <div class="two-col">
+      <div class="card big-chart">
+        <h3>Weekly Calories (In vs Out)</h3>
+        <canvas id="weeklyChart"></canvas>
+      </div>
+
+      <div class="card goal-card">
+        <h3>Daily Calorie Goal</h3>
+        <div class="row" style="margin-top:8px;">
+          <input type="number" id="goalInput" placeholder="Set goal (kcal)" />
+          <button id="saveGoalBtn" type="button">Save Goal</button>
+        </div>
+        <div class="small">
+          <span id="todayIntakeText">Today's intake: 0 kcal</span>
+          <span id="goalTextInline" style="margin-left:8px;">/ 2000 kcal</span>
+        </div>
+        <div class="progressbar">
+          <div id="goalProgressBar"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">© 2025 FitTrack Dashboard</footer>
+
+  <script>
+    // ---------- Dark Mode ----------
+    const themeToggle = document.getElementById("themeToggle");
+    if (localStorage.getItem("theme") === "dark") document.body.classList.add("dark");
+    themeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      localStorage.setItem("theme", document.body.classList.contains("dark") ? "dark" : "light");
+    });
+
+    // ---------- Analog + Digital Clock ----------
+    const hourHand = document.getElementById("hourHand");
+    const minuteHand = document.getElementById("minuteHand");
+    const secondHand = document.getElementById("secondHand");
+    const digitalTime = document.getElementById("digitalTime");
+
+    function updateClock() {
+      const now = new Date();
+      const seconds = now.getSeconds();
+      const minutes = now.getMinutes();
+      const hours = now.getHours();
+
+      const secDeg = seconds * 6;
+      const minDeg = minutes * 6 + seconds * 0.1;
+      const hrDeg  = (hours % 12) * 30 + minutes * 0.5;
+
+      hourHand.style.transform   = `translateX(-50%) rotate(${hrDeg}deg)`;
+      minuteHand.style.transform = `translateX(-50%) rotate(${minDeg}deg)`;
+      secondHand.style.transform = `translateX(-50%) rotate(${secDeg}deg)`;
+
+      digitalTime.textContent = now.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      });
+    }
+    updateClock();
+    setInterval(updateClock, 1000);
+
+    // ---------- Dashboard Logic ----------
+    document.addEventListener("DOMContentLoaded", () => {
+      let state = JSON.parse(localStorage.getItem("fittrack")) || {
+        workouts: [],
+        meals: [],
+        weights: [],
+        goals: [],
+        calGoal: 2000,
+        lastMessage: "",
+        sampleInitialized: false,
+        selectedDate: null
+      };
+
+      if (!Array.isArray(state.workouts)) state.workouts = [];
+      if (!Array.isArray(state.meals)) state.meals = [];
+      if (!Array.isArray(state.weights)) state.weights = [];
+      if (!Array.isArray(state.goals)) state.goals = [];
+      if (state.calGoal == null) state.calGoal = 2000;
+      if (state.lastMessage === undefined) state.lastMessage = "";
+      if (state.sampleInitialized === undefined) state.sampleInitialized = false;
+      if (!state.selectedDate) {
+        state.selectedDate = new Date().toISOString().split("T")[0];
+      }
+
+      const inKcalEl        = document.getElementById("inKcal");
+      const outKcalEl       = document.getElementById("outKcal");
+      const weightTextEl    = document.getElementById("weightText");
+      const goalsTextEl     = document.getElementById("goalText");
+      const motivationEl    = document.getElementById("motivationMessage");
+      const calGoalBar      = document.getElementById("calGoalBar");
+      const goalProgressBar = document.getElementById("goalProgressBar");
+      const todayIntakeText = document.getElementById("todayIntakeText");
+      const goalTextInline  = document.getElementById("goalTextInline");
+      const datePicker      = document.getElementById("historyDate");
+      const weeklyCanvas    = document.getElementById("weeklyChart");
+      const goalInput       = document.getElementById("goalInput");
+      const saveGoalBtn     = document.getElementById("saveGoalBtn");
+      let weeklyChart;
+
+      datePicker.value = state.selectedDate;
+
+      function saveState() {
+        localStorage.setItem("fittrack", JSON.stringify(state));
+      }
+
+      // Sample data (5 workouts, 5 meals, 5 weights) if empty
+      function daysAgo(n) {
+        const d = new Date();
+        d.setDate(d.getDate() - n);
+        return d.getTime();
+      }
+
+      if (
+        !state.sampleInitialized &&
+        state.workouts.length === 0 &&
+        state.meals.length === 0 &&
+        state.weights.length === 0
+      ) {
+        state.workouts = [
+          { name: "Bench Press", sets: 4, reps: 10, calories: 180, ts: daysAgo(5) },
+          { name: "Running", sets: 1, reps: 1, calories: 300, ts: daysAgo(4) },
+          { name: "Squats", sets: 3, reps: 12, calories: 160, ts: daysAgo(3) },
+          { name: "Cycling", sets: 1, reps: 1, calories: 280, ts: daysAgo(2) },
+          { name: "Plank & Core", sets: 3, reps: 45, calories: 90, ts: daysAgo(1) }
+        ];
+        state.meals = [
+          { name: "Oatmeal & Berries", calories: 320, protein: 12, carbs: 50, fat: 5, ts: daysAgo(3) },
+          { name: "Chicken Salad", calories: 450, protein: 35, carbs: 20, fat: 15, ts: daysAgo(3) },
+          { name: "Salmon & Rice", calories: 540, protein: 34, carbs: 45, fat: 18, ts: daysAgo(2) },
+          { name: "Greek Yogurt", calories: 150, protein: 15, carbs: 12, fat: 3, ts: daysAgo(1) },
+          { name: "Turkey Sandwich", calories: 410, protein: 28, carbs: 42, fat: 9, ts: daysAgo(0) }
+        ];
+        state.weights = [
+          { lb: 168,   ts: daysAgo(5) },
+          { lb: 167.2, ts: daysAgo(4) },
+          { lb: 166.5, ts: daysAgo(3) },
+          { lb: 166.0, ts: daysAgo(2) },
+          { lb: 165.8, ts: daysAgo(1) }
+        ];
+        state.sampleInitialized = true;
+        state.lastMessage = "Welcome to FitTrack! Sample data loaded to demonstrate your dashboard 📊";
+        saveState();
+      }
+
+      function sameDay(a, b) {
+        const da = new Date(a), db = new Date(b);
+        return da.toDateString() === db.toDateString();
+      }
+
+      function intakeOn(d) {
+        return state.meals
+          .filter(m => sameDay(m.ts, d))
+          .reduce((sum, m) => sum + (m.calories || 0), 0);
+      }
+
+      function burnOn(d) {
+        return state.workouts
+          .filter(w => sameDay(w.ts, d))
+          .reduce((sum, w) => sum + (w.calories || 0), 0);
+      }
+
+      function renderMotivation() {
+        if (!motivationEl) return;
+        if (state.lastMessage && state.lastMessage.trim() !== "") {
+          motivationEl.textContent = state.lastMessage;
+          motivationEl.style.display = "block";
+        } else {
+          motivationEl.style.display = "none";
+        }
+      }
+
+      function renderOverview(dateForRender) {
+        const kcalIn  = intakeOn(dateForRender);
+        const kcalOut = burnOn(dateForRender);
+
+        inKcalEl.textContent  = `${kcalIn} kcal`;
+        outKcalEl.textContent = `${kcalOut} kcal`;
+
+        // weight
+        if (state.weights.length > 0) {
+          const last = state.weights[state.weights.length - 1].lb;
+          weightTextEl.textContent = `${last} lbs`;
+        } else {
+          weightTextEl.textContent = "No weigh-ins yet";
+        }
+
+        // goals
+        const doneCount = state.goals.filter(g => g.done).length;
+        goalsTextEl.textContent = `${doneCount} goals`;
+
+        const calGoal = state.calGoal || 2000;
+        const pct = Math.min((kcalIn / calGoal) * 100, 100);
+        calGoalBar.style.width      = pct + "%";
+        goalProgressBar.style.width = pct + "%";
+        todayIntakeText.textContent = `Today's intake: ${kcalIn} kcal`;
+        goalTextInline.textContent  = `/ ${calGoal} kcal`;
+
+        if (pct >= 100 && kcalIn > 0) {
+          state.lastMessage = "Amazing job! You hit your calorie goal today 🎯 Keep pushing!";
+          saveState();
+        }
+
+        renderMotivation();
+      }
+
+      function renderWeeklyChart(baseDate) {
+        const days = [...Array(7)].map((_, i) => {
+          const d = new Date(baseDate);
+          d.setDate(d.getDate() - (6 - i));
+          return d;
+        });
+        const labels = days.map(d =>
+          d.toLocaleDateString("en-US", { weekday: "short" })
+        );
+        const dataIn  = days.map(d => intakeOn(d));
+        const dataOut = days.map(d => burnOn(d));
+
+        if (weeklyChart) weeklyChart.destroy();
+
+        weeklyChart = new Chart(weeklyCanvas, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Calories In",
+                data: dataIn,
+                borderColor: "#007aff",
+                backgroundColor: "rgba(0,122,255,0.18)",
+                fill: true,
+                tension: 0.35
+              },
+              {
+                label: "Calories Out",
+                data: dataOut,
+                borderColor: "#ef4444",
+                backgroundColor: "rgba(239,68,68,0.18)",
+                fill: true,
+                tension: 0.35
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: { y: { beginAtZero: true } }
+          }
+        });
+      }
+
+      // Save calorie goal
+      saveGoalBtn.addEventListener("click", () => {
+        const val = parseInt(goalInput.value, 10);
+        if (!isNaN(val) && val > 0) {
+          state.calGoal = val;
+          saveState();
+          const baseDate = new Date(state.selectedDate);
+          renderOverview(baseDate);
+        }
+      });
+
+      // Date picker changes shared selectedDate across pages
+      datePicker.addEventListener("change", (e) => {
+        const value = e.target.value || new Date().toISOString().split("T")[0];
+        state.selectedDate = value;
+        saveState();
+        const selected = new Date(state.selectedDate);
+        renderOverview(selected);
+        renderWeeklyChart(selected);
+      });
+
+      // Initial render based on selectedDate
+      const initialDate = new Date(state.selectedDate);
+      goalInput.value = state.calGoal || 2000;
+      renderOverview(initialDate);
+      renderWeeklyChart(initialDate);
+    });
+  </script>
+</body>
+</html>

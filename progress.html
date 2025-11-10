@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Progress - FitTrack</title>
+  <link rel="stylesheet" href="CSS/styles.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <header class="topnav">
+    <div class="logo">FitTrack</div>
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="workouts.html">Workouts</a>
+      <a href="meals.html">Meals</a>
+      <a class="active" href="progress.html">Progress</a>
+      <a href="goals.html">Goals</a>
+    </nav>
+    <button id="themeToggle">🌙</button>
+  </header>
+
+  <main class="container">
+    <h2>Progress Overview</h2>
+
+    <label for="progressDate">Select week ending date:</label>
+    <input type="date" id="progressDate" />
+
+    <div class="two-column">
+      <!-- LEFT: Weight Trend -->
+      <div class="panel left-panel">
+        <h3>Weight Trend</h3>
+        <div class="flex">
+          <input type="number" id="weightInput" placeholder="Weight (lbs)" />
+          <button id="addWeightBtn">+ Add</button>
+        </div>
+
+        <table id="weightTable">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Weight</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="weightList"></tbody>
+        </table>
+
+        <canvas id="weightChart"></canvas>
+      </div>
+
+      <!-- RIGHT: Weekly Calories -->
+      <div class="panel right-panel">
+        <h3>Weekly Calories (In vs Out)</h3>
+        <canvas id="calorieChart"></canvas>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">© 2025 FitTrack Dashboard</footer>
+
+  <script>
+    // ---------- DARK MODE ----------
+    const themeToggle = document.getElementById("themeToggle");
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark");
+    }
+    themeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      localStorage.setItem(
+        "theme",
+        document.body.classList.contains("dark") ? "dark" : "light"
+      );
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      let state = JSON.parse(localStorage.getItem("fittrack")) || {
+        workouts: [],
+        meals: [],
+        weights: [],
+        goals: [],
+        calGoal: 2000,
+        lastMessage: "",
+        sampleInitialized: false,
+        selectedDate: null
+      };
+
+      if (!Array.isArray(state.workouts)) state.workouts = [];
+      if (!Array.isArray(state.meals)) state.meals = [];
+      if (!Array.isArray(state.weights)) state.weights = [];
+      if (!Array.isArray(state.goals)) state.goals = [];
+      if (state.calGoal == null) state.calGoal = 2000;
+      if (state.lastMessage === undefined) state.lastMessage = "";
+      if (state.sampleInitialized === undefined) state.sampleInitialized = false;
+      if (!state.selectedDate) {
+        state.selectedDate = new Date().toISOString().split("T")[0];
+      }
+
+      const addBtn             = document.getElementById("addWeightBtn");
+      const weightInput        = document.getElementById("weightInput");
+      const weightList         = document.getElementById("weightList");
+      const weightChartCanvas  = document.getElementById("weightChart");
+      const calorieChartCanvas = document.getElementById("calorieChart");
+      const progressDateInput  = document.getElementById("progressDate");
+
+      let weightChart;
+      let calorieChart;
+      let currentBaseDate = new Date(state.selectedDate);
+      progressDateInput.value = state.selectedDate;
+
+      function saveState() {
+        localStorage.setItem("fittrack", JSON.stringify(state));
+      }
+
+      function sameDay(a, b) {
+        const da = new Date(a), db = new Date(b);
+        return da.toDateString() === db.toDateString();
+      }
+
+      function renderWeights() {
+        const sortedWeights = [...state.weights].sort((a, b) => a.ts - b.ts);
+        weightList.innerHTML = "";
+
+        sortedWeights.forEach(w => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${new Date(w.ts).toLocaleDateString()}</td>
+            <td>${w.lb} lbs</td>
+            <td><button class="delete-btn">Delete</button></td>
+          `;
+
+          tr.querySelector(".delete-btn").addEventListener("click", () => {
+            state.weights = state.weights.filter(x => x.ts !== w.ts);
+            saveState();
+            renderWeights();
+            drawWeightChart();
+          });
+
+          weightList.appendChild(tr);
+        });
+
+        drawWeightChart();
+      }
+
+      function drawWeightChart() {
+        const sortedWeights = [...state.weights].sort((a, b) => a.ts - b.ts);
+        const labels = sortedWeights.map(w =>
+          new Date(w.ts).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+        );
+        const data = sortedWeights.map(w => w.lb);
+
+        if (weightChart) weightChart.destroy();
+
+        weightChart = new Chart(weightChartCanvas, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Weight (lbs)",
+                data,
+                borderColor: "#3b82f6",
+                backgroundColor: "rgba(59,130,246,0.12)",
+                tension: 0.4,
+                fill: true,
+                pointRadius: 4
+              }
+            ]
+          },
+          options: {
+            plugins: { legend: { display: true } },
+            scales: { y: { beginAtZero: false } }
+          }
+        });
+      }
+
+      function drawCalorieChart(baseDate) {
+        const days = [...Array(7)].map((_, i) => {
+          const d = new Date(baseDate);
+          d.setDate(d.getDate() - (6 - i));
+          return d;
+        });
+
+        const labels = days.map(d =>
+          d.toLocaleDateString("en-US", { weekday: "short" })
+        );
+
+        const inData = days.map(d =>
+          state.meals
+            .filter(m => sameDay(m.ts, d))
+            .reduce((sum, m) => sum + (m.calories || 0), 0)
+        );
+
+        const outData = days.map(d =>
+          state.workouts
+            .filter(w => sameDay(w.ts, d))
+            .reduce((sum, w) => sum + (w.calories || 0), 0)
+        );
+
+        if (calorieChart) calorieChart.destroy();
+
+        calorieChart = new Chart(calorieChartCanvas, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Calories In",
+                data: inData,
+                borderColor: "#22c55e",
+                backgroundColor: "rgba(34,197,94,0.15)",
+                fill: true,
+                tension: 0.35
+              },
+              {
+                label: "Calories Out",
+                data: outData,
+                borderColor: "#ef4444",
+                backgroundColor: "rgba(239,68,68,0.15)",
+                fill: true,
+                tension: 0.35
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: { beginAtZero: true }
+            }
+          }
+        });
+      }
+
+      addBtn.addEventListener("click", () => {
+        const val = parseFloat(weightInput.value.trim());
+        if (isNaN(val) || val <= 0) return;
+
+        let previousMin = null;
+        if (state.weights.length > 0) {
+          previousMin = Math.min(...state.weights.map(w => w.lb));
+        }
+
+        const d = new Date(state.selectedDate || new Date().toISOString().split("T")[0]);
+        const now = new Date();
+        d.setHours(now.getHours(), now.getMinutes(), now.getSeconds(), 0);
+
+        const entry = { lb: val, ts: d.getTime() };
+        state.weights.push(entry);
+        saveState();
+        weightInput.value = "";
+
+        if (previousMin === null || val < previousMin) {
+          state.lastMessage = `New low weigh-in on ${state.selectedDate}: ${val} lbs 🎉`;
+        } else {
+          state.lastMessage = `Nice consistency! Weight for ${state.selectedDate}: ${val} lbs ✅`;
+        }
+        saveState();
+
+        renderWeights();
+      });
+
+      progressDateInput.addEventListener("change", (e) => {
+        const value = e.target.value || new Date().toISOString().split("T")[0];
+        state.selectedDate = value;
+        saveState();
+        currentBaseDate = new Date(state.selectedDate);
+        drawCalorieChart(currentBaseDate);
+      });
+
+      // Initial renders
+      renderWeights();
+      drawCalorieChart(currentBaseDate);
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Goals - FitTrack</title>
+  <link rel="stylesheet" href="CSS/styles.css" />
+</head>
+
+<body>
+  <header class="topnav">
+    <div class="logo">FitTrack</div>
+    <nav>
+      <a href="index.html">Dashboard</a>
+      <a href="workouts.html">Workouts</a>
+      <a href="meals.html">Meals</a>
+      <a href="progress.html">Progress</a>
+      <a class="active" href="goals.html">Goals</a>
+    </nav>
+    <button id="themeToggle">🌙</button>
+  </header>
+
+  <main class="container">
+    <h2>Goals & Habits</h2>
+
+    <div class="two-column">
+      <!-- LEFT: Add / list goals -->
+      <div class="panel left-panel">
+        <h3>Create a New Goal</h3>
+        <form id="goalForm">
+          <input
+            type="text"
+            id="goalText"
+            placeholder="e.g., Drink 5 bottles of water"
+            required
+          />
+          <input
+            type="number"
+            id="goalTarget"
+            placeholder="Optional target (e.g., 5)"
+            min="1"
+          />
+          <button type="submit">+ Add Goal</button>
+        </form>
+
+        <h3 style="margin-top:18px;">Your Goals</h3>
+        <ul id="goalList" class="goal-list"></ul>
+      </div>
+
+      <!-- RIGHT: Summary & progress -->
+      <div class="panel right-panel">
+        <h3>Goal Summary</h3>
+        <p id="goalCountText">0 goals total</p>
+        <p id="goalDoneText">0 goals completed</p>
+
+        <div class="progressbar" style="margin-top:10px;">
+          <div id="goalProgressBar"></div>
+        </div>
+        <p id="goalProgressLabel" class="small" style="margin-top:6px;">
+          0 / 0 goals completed
+        </p>
+
+        <h4 style="margin-top:22px;">Tips</h4>
+        <ul class="small">
+          <li>Use short, specific goals (e.g., “Run 2 miles” instead of “Run more”).</li>
+          <li>Mark goals as done right after you complete them to see your progress bar fill.</li>
+          <li>Completed goals will show on the dashboard and update your motivation message.</li>
+        </ul>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">© 2025 FitTrack Dashboard</footer>
+
+  <script>
+    // ---------- DARK MODE ----------
+    const themeToggle = document.getElementById("themeToggle");
+    if (localStorage.getItem("theme") === "dark") {
+      document.body.classList.add("dark");
+    }
+    themeToggle.addEventListener("click", () => {
+      document.body.classList.toggle("dark");
+      localStorage.setItem(
+        "theme",
+        document.body.classList.contains("dark") ? "dark" : "light"
+      );
+    });
+
+    document.addEventListener("DOMContentLoaded", () => {
+      // Shared FitTrack state
+      let state = JSON.parse(localStorage.getItem("fittrack")) || {
+        workouts: [],
+        meals: [],
+        weights: [],
+        goals: [],
+        calGoal: 2000,
+        lastMessage: "",
+        sampleInitialized: false,
+        selectedDate: null
+      };
+
+      if (!Array.isArray(state.workouts)) state.workouts = [];
+      if (!Array.isArray(state.meals)) state.meals = [];
+      if (!Array.isArray(state.weights)) state.weights = [];
+      if (!Array.isArray(state.goals)) state.goals = [];
+      if (state.calGoal == null) state.calGoal = 2000;
+      if (state.lastMessage === undefined) state.lastMessage = "";
+      if (state.sampleInitialized === undefined) state.sampleInitialized = false;
+      if (!state.selectedDate) {
+        state.selectedDate = new Date().toISOString().split("T")[0];
+      }
+
+      const goalForm          = document.getElementById("goalForm");
+      const goalTextInput     = document.getElementById("goalText");
+      const goalTargetInput   = document.getElementById("goalTarget");
+      const goalListEl        = document.getElementById("goalList");
+      const goalCountText     = document.getElementById("goalCountText");
+      const goalDoneText      = document.getElementById("goalDoneText");
+      const goalProgressBar   = document.getElementById("goalProgressBar");
+      const goalProgressLabel = document.getElementById("goalProgressLabel");
+
+      function saveState() {
+        localStorage.setItem("fittrack", JSON.stringify(state));
+      }
+
+      function updateSummaryAndMessage() {
+        const total = state.goals.length;
+        const done  = state.goals.filter((g) => g.done).length;
+
+        goalCountText.textContent = `${total} goal${total === 1 ? "" : "s"} total`;
+        goalDoneText.textContent  = `${done} goal${done === 1 ? "" : "s"} completed`;
+        goalProgressLabel.textContent = `${done} / ${total || 0} goals completed`;
+
+        let pct = 0;
+        if (total > 0) pct = (done / total) * 100;
+        goalProgressBar.style.width = Math.min(100, pct) + "%";
+
+        // Motivational messages based on goals
+        if (total === 0) {
+          return; // don't override other messages if no goals yet
+        }
+
+        if (done === 0) {
+          state.lastMessage = "You’ve set your goals — now let’s start checking them off ✅";
+        } else if (done < total) {
+          state.lastMessage = `Great job! You’ve completed ${done} of ${total} goals so far 💪`;
+        } else if (done === total) {
+          state.lastMessage = "Incredible! You completed all your goals 🎉 Take a moment to be proud.";
+        }
+        saveState();
+      }
+
+      function renderGoals() {
+        goalListEl.innerHTML = "";
+
+        if (state.goals.length === 0) {
+          goalListEl.innerHTML = "<li class='small'>No goals yet. Add one above!</li>";
+        } else {
+          state.goals.forEach((g) => {
+            const li = document.createElement("li");
+            li.className = "goal-item";
+
+            const statusText = g.done ? "Done" : "In Progress";
+            const targetText =
+              g.target && !isNaN(g.target)
+                ? `Target: ${g.target}`
+                : "";
+
+            li.innerHTML = `
+              <div class="goal-main">
+                <span class="goal-text ${g.done ? "goal-done" : ""}">
+                  ${g.text}
+                </span>
+                <span class="goal-meta small">
+                  ${targetText ? targetText + " • " : ""}${statusText}
+                </span>
+              </div>
+              <div class="goal-actions">
+                <button class="small-btn toggle-btn">
+                  ${g.done ? "Unmark" : "Mark Done"}
+                </button>
+                <button class="small-btn delete-btn">Delete</button>
+              </div>
+            `;
+
+            li.querySelector(".toggle-btn").addEventListener("click", () => {
+              g.done = !g.done;
+              updateSummaryAndMessage();
+              saveState();
+              renderGoals();
+            });
+
+            li.querySelector(".delete-btn").addEventListener("click", () => {
+              state.goals = state.goals.filter((x) => x.id !== g.id);
+              updateSummaryAndMessage();
+              saveState();
+              renderGoals();
+            });
+
+            goalListEl.appendChild(li);
+          });
+        }
+
+        updateSummaryAndMessage();
+      }
+
+      goalForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const text   = goalTextInput.value.trim();
+        const target = parseInt(goalTargetInput.value.trim());
+
+        if (!text) return;
+
+        const newGoal = {
+          id: Date.now(),
+          text,
+          target: isNaN(target) ? null : target,
+          done: false,
+          createdAt: Date.now()
+        };
+
+        state.goals.push(newGoal);
+        state.lastMessage = `New goal added: "${text}" 🚀`;
+        saveState();
+
+        goalForm.reset();
+        renderGoals();
+      });
+
+      // Initial render
+      renderGoals();
+    });
+  </script>
+</body>
+</html>
